@@ -5,7 +5,6 @@ High‑volume multi‑brand QR ordering platform. Guests scan table / stall QR c
 * Next.js 15 (App Router, Partial Prerendering, Server Actions)
 * React 19 (concurrent features, streaming server components)
 * Convex (real‑time database + reactive queries + function layer) for operational state (carts, order projections, inventory, discounts usage counters)
-* Postgres (via Prisma) as durable ledger and analytics store (immutable orders, payments, audit log, historical aggregates)
 * Better Auth (passkeys, magic link email, OAuth providers, optional phone OTP) for strong, flexible authentication
 
 ## 2. Technology Stack

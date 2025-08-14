@@ -2,7 +2,6 @@
 
 ## 1. Role Definitions
 - MASTER: Platform-level superuser (universe scope). Can manage all brands, outlets, global menus, universal discounts, onboard brands/outlets, assign roles.
-- BRAND_ADMIN: Scoped to one brand. Manage brand menu items, brand-level discounts, view brand analytics, create outlets under brand.
 - STORE_ADMIN: Scoped to one outlet. Manage outlet-specific item overrides (price/availability), local discounts, process orders, view outlet analytics.
 - KITCHEN: Scoped to one outlet. View incoming orders, update preparation statuses.
 - CUSTOMER: End user (guest or authenticated) placing orders and tracking them.
@@ -34,30 +33,8 @@
 - Universal items: stored with isUniversal = true; visible to all outlets unless overridden by outlet-specific availability.
 - Outlet overrides: separate mapping table or override columns enabling price/availability mutation without duplicating global item.
 
-## 4. Policy Patterns (Conceptual)
-Example RLS pseudocode (Postgres):
-1. SELECT menu items:
-	USING ( isUniversal OR brand_id = auth.brand_id() OR outlet_id = auth.outlet_id() ) AND is_active = true;
-2. UPDATE menu item (brand scope):
-	WITH CHECK ( auth.role() IN ('MASTER','BRAND_ADMIN') AND brand_id = auth.brand_id() );
-3. UPDATE outlet override:
-	WITH CHECK ( auth.role() IN ('MASTER','BRAND_ADMIN','STORE_ADMIN') AND outlet_id = auth.outlet_id() );
-4. SELECT orders:
-	USING (
-		auth.role() = 'MASTER' OR
-		(auth.role() = 'BRAND_ADMIN' AND brand_id = auth.brand_id()) OR
-		(auth.role() IN ('STORE_ADMIN','KITCHEN') AND outlet_id = auth.outlet_id()) OR
-		(auth.role() = 'CUSTOMER' AND user_id = auth.uid())
-	);
-
-## 5. Auditing
-- AuditLog table captures (id, actorUserId, actorRole, action, entityType, entityId, before JSONB, after JSONB, createdAt, ipHash).
-- Actions: MENU_CREATE, MENU_UPDATE, DISCOUNT_CREATE, ROLE_ASSIGN, ORDER_STATUS_CHANGE, OUTLET_CREATE, BRAND_CREATE.
-- Immutable append-only; periodic archival after 180 days (compression / cold storage optional).
-
 ## 6. Least Privilege Notes
 - STORE_ADMIN cannot modify universal properties (e.g., delete universal item) – only override availability/price.
-- BRAND_ADMIN cannot access other brands' orders even if brand items are universal.
 - KITCHEN limited to status transitions (PREPARING -> READY -> DELIVERED) and cannot revert or cancel (except MASTER/ADMIN).
 
 ## 7. Session Types

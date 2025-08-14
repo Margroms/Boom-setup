@@ -6,6 +6,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
 import clsx from 'clsx';
+import UploadMenuImage from '../components/UploadMenuImage';
 
 interface KitchenDoc { _id: Id<'kitchens'>; name: string }
 
@@ -27,9 +28,16 @@ function KitchenMenu({ kitchen }: { kitchen: KitchenDoc }) {
       <ul className="divide-y divide-neutral-100 text-sm">
         {menuItems?.map(item => (
           <li key={item._id} className="flex items-center justify-between py-2 group">
-            <div className="flex-1 min-w-0 pr-4">
-              <p className="text-neutral-700 truncate">{item.name}</p>
-              <p className="text-xs text-neutral-400">₹{item.price.toFixed(2)}</p>
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              {item.imageUrl && (
+                <div className="w-12 h-12 rounded overflow-hidden flex-shrink-0">
+                  <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-neutral-700 truncate">{item.name}</p>
+                <p className="text-xs text-neutral-400">₹{item.price.toFixed(2)}</p>
+              </div>
             </div>
             <button
               onClick={() => removeMenuItem({ menuItemId: item._id })}
@@ -50,14 +58,22 @@ export default function SuperAdminPage() {
   const createKitchen = useMutation(api.kitchen.create);
   const createMenuItem = useMutation(api.menuItems.create);
   const createMenuItemAll = useMutation(api.menuItems.createForAll);
+  const upsertUser = useMutation(api.users.upsert);
 
   const [newKitchenName, setNewKitchenName] = useState('');
   const [newItemName, setNewItemName] = useState('');
   const [newItemPrice, setNewItemPrice] = useState('');
-  const [selectedKitchen, setSelectedKitchen] = useState<Id<'kitchens'> | ''>('');
+  const [newItemImage, setNewItemImage] = useState<string | null>(null);
+  const [selectedKitchen, setSelectedKitchen] = useState<Id<'kitchens'> | 'ALL' | ''>('');
+  const [newKitchenBrand, setNewKitchenBrand] = useState<'nippu-kodi' | 'el-chaplo' | 'booms-pizza' | ''>('');
   const [submitting, setSubmitting] = useState(false);
   const [creatingKitchen, setCreatingKitchen] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'SUPER_ADMIN' | 'KITCHEN'>('KITCHEN');
+  const [inviteBrand, setInviteBrand] = useState<'nippu-kodi' | 'el-chaplo' | 'booms-pizza' | ''>('');
+  const [inviteKitchen, setInviteKitchen] = useState<Id<'kitchens'> | ''>('');
+  const [inviting, setInviting] = useState(false);
 
   const handleCreateKitchen = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,8 +83,10 @@ export default function SuperAdminPage() {
     }
     setCreatingKitchen(true);
     try {
-      await createKitchen({ name: newKitchenName.trim() });
+      if (!newKitchenBrand) throw new Error('Select brand');
+      await createKitchen({ name: newKitchenName.trim(), brandSlug: newKitchenBrand });
       setNewKitchenName('');
+      setNewKitchenBrand('');
       setToast({ type: 'success', message: 'Kitchen created!' });
     } catch (e: any) {
       setToast({ type: 'error', message: e?.message || 'Failed to create kitchen' });
@@ -84,17 +102,19 @@ export default function SuperAdminPage() {
     setSubmitting(true);
     try {
       if (selectedKitchen === 'ALL') {
-        await createMenuItemAll({ name: newItemName.trim(), price: parseFloat(newItemPrice) });
+        await createMenuItemAll({ name: newItemName.trim(), price: parseFloat(newItemPrice), imageUrl: newItemImage ?? undefined });
       } else {
         if (!selectedKitchen) throw new Error('Select a kitchen or ALL');
         await createMenuItem({
           name: newItemName.trim(),
           price: parseFloat(newItemPrice),
           kitchenId: selectedKitchen,
+          imageUrl: newItemImage ?? undefined,
         });
       }
       setNewItemName('');
       setNewItemPrice('');
+      setNewItemImage(null);
       setToast({ type: 'success', message: 'Item added!' });
     } catch (e: any) {
       setToast({ type: 'error', message: e?.message || 'Failed to add item' });
@@ -106,8 +126,19 @@ export default function SuperAdminPage() {
       {/* Kitchen creation */}
       <header className="sticky top-0 z-20 bg-white/80 backdrop-blur border-b">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
-          <h1 className="text-xl font-semibold tracking-tight">Super Admin</h1>
-          <div className="text-xs text-neutral-500">Manage kitchens & menus</div>
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">Super Admin</h1>
+            <div className="text-xs text-neutral-500">Manage kitchens & menus</div>
+          </div>
+          <button
+            onClick={() => {
+              localStorage.removeItem('auth-session');
+              window.location.href = '/sign-in';
+            }}
+            className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400"
+          >
+            Logout
+          </button>
         </div>
       </header>
 
@@ -115,13 +146,23 @@ export default function SuperAdminPage() {
         {/* Kitchen creation */}
         <section className="rounded-lg border bg-white p-5 shadow-sm">
           <h2 className="text-sm font-medium text-neutral-700 mb-4">Add New Kitchen</h2>
-          <form onSubmit={handleCreateKitchen} className="flex flex-col gap-3 sm:flex-row">
+          <form onSubmit={handleCreateKitchen} className="grid gap-3 sm:grid-cols-3">
             <input
               placeholder="Kitchen name"
               value={newKitchenName}
               onChange={(e) => setNewKitchenName(e.target.value)}
-              className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+              className="rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
             />
+            <select
+              value={newKitchenBrand}
+              onChange={(e) => setNewKitchenBrand(e.target.value as any)}
+              className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            >
+              <option value="">Select brand</option>
+              <option value="nippu-kodi">nippu kodi</option>
+              <option value="el-chaplo">el chaplo</option>
+              <option value="booms-pizza">boom's pizza</option>
+            </select>
             <button
               type="submit"
               disabled={creatingKitchen}
@@ -134,7 +175,7 @@ export default function SuperAdminPage() {
         {/* Form */}
         <section className="rounded-lg border bg-white p-5 shadow-sm">
           <h2 className="text-sm font-medium text-neutral-700 mb-4">Add New Menu Item</h2>
-          <form onSubmit={handleAddMenuItem} className="grid gap-3 md:grid-cols-4">
+          <form onSubmit={handleAddMenuItem} className="grid gap-3 md:grid-cols-5">
             <select
               value={selectedKitchen}
               onChange={(e) => setSelectedKitchen(e.target.value as any)}
@@ -159,6 +200,10 @@ export default function SuperAdminPage() {
               onChange={(e) => setNewItemPrice(e.target.value)}
               className="md:col-span-1 rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
             />
+            <div className="md:col-span-1">
+              <UploadMenuImage onUploaded={(url) => setNewItemImage(url)} />
+              {newItemImage && <p className="mt-1 text-[10px] text-neutral-500 truncate">{newItemImage}</p>}
+            </div>
             <div className="md:col-span-1 flex gap-2">
               <button
                 type="submit"
@@ -173,6 +218,75 @@ export default function SuperAdminPage() {
             </div>
           </form>
           <p className="mt-3 text-[11px] text-neutral-400">All fields required. Prices in INR.</p>
+        </section>
+
+        {/* Invite / Assign User */}
+        <section className="rounded-lg border bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-medium text-neutral-700 mb-4">Invite / Assign Role</h2>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setInviting(true);
+              try {
+                if (inviteRole === 'KITCHEN' && !inviteKitchen) throw new Error('Select kitchen for kitchen role');
+                await upsertUser({
+                  email: inviteEmail.trim(),
+                  role: inviteRole,
+                  brandSlug: inviteBrand || undefined,
+                  kitchenId: (inviteRole === 'KITCHEN' ? (inviteKitchen as Id<'kitchens'>) : undefined) as any,
+                });
+                setInviteEmail('');
+                setInviteBrand('');
+                setInviteKitchen('');
+                setInviteRole('KITCHEN');
+                setToast({ type: 'success', message: 'User assigned!' });
+              } catch (e: any) {
+                setToast({ type: 'error', message: e?.message || 'Failed to assign user' });
+              } finally { setInviting(false); }
+            }}
+            className="grid gap-3 md:grid-cols-5"
+          >
+            <input
+              placeholder="Email"
+              value={inviteEmail}
+              onChange={(e) => setInviteEmail(e.target.value)}
+              className="md:col-span-1 rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            />
+            <select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value as any)}
+              className="md:col-span-1 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            >
+              <option value="KITCHEN">Kitchen</option>
+              <option value="SUPER_ADMIN">Super Admin</option>
+            </select>
+            <select
+              value={inviteBrand}
+              onChange={(e) => setInviteBrand(e.target.value as any)}
+              className="md:col-span-1 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            >
+              <option value="">Brand (optional)</option>
+              <option value="nippu-kodi">nippu kodi</option>
+              <option value="el-chaplo">el chaplo</option>
+              <option value="booms-pizza">boom's pizza</option>
+            </select>
+            <select
+              value={inviteKitchen}
+              onChange={(e) => setInviteKitchen(e.target.value as any)}
+              className="md:col-span-1 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            >
+              <option value="">Kitchen (for role KITCHEN)</option>
+              {kitchens?.map(k => <option key={k._id} value={k._id}>{k.name}</option>)}
+            </select>
+            <div className="md:col-span-1">
+              <button
+                type="submit"
+                disabled={inviting}
+                className={clsx('w-full inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-400 disabled:opacity-50', inviting ? 'bg-neutral-400' : 'bg-neutral-900 hover:bg-neutral-800')}
+              >{inviting ? 'Assigning…' : 'Assign'}</button>
+            </div>
+          </form>
+          <p className="mt-3 text-[11px] text-neutral-400">Invite creates/updates the user in Convex with a role. Sign-in still handled by Better Auth.</p>
         </section>
 
         {/* Kitchens */}

@@ -12,17 +12,9 @@ Legend: (UI), (API), (DB), (INFRA), (QA), (SEC), (OBS)
 - [ ] Configure TypeScript strict, ESLint, Prettier, Husky pre-commit (INFRA)
 - [ ] Add Tailwind CSS + base design system tokens (UI)
 - [ ] Setup Convex project & dev deployment (INFRA)
-- [ ] Integrate Prisma + Postgres schema baseline (DB)
 - [ ] Environment variable management & secret loading (INFRA/SEC)
 - [ ] Observability bootstrap (logger, trace id middleware, OTEL config) (OBS)
-
-## Epic 2: Data Modeling & Migrations
-- [ ] Draft Prisma schema (Brand, Outlet, Table, User, UserRole, MenuItem, ModifierGroup/Option, Discount, Order, OrderItem, OrderEvent, Payment, AuditLog) (DB)
-- [ ] Draft Convex schema (ActiveCart, CartItem, ActiveOrder, InventoryState, DiscountCounter) (DB)
-- [ ] Apply initial migrations (DB)
-- [ ] Seed script for sample brand/outlet/menu (DB)
-- [ ] Indexes & constraints (ledger) (DB)
-- [ ] RLS policy design & implementation (DB/SEC)
+s
 
 ## Epic 3: Auth & Role System
 - [ ] Better Auth config (Passkeys, Magic Link, Google OAuth, optional Phone OTP) (API/SEC)

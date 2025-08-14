@@ -9,9 +9,16 @@ export const list = query({
   },
 });
 
+export const get = query({
+  args: { id: v.id('kitchens') },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
+  },
+});
+
 // Mutation to create a new kitchen
 export const create = mutation({
-  args: { name: v.string() },
+  args: { name: v.string(), brandSlug: v.union(v.literal('nippu-kodi'), v.literal('el-chaplo'), v.literal('booms-pizza')) },
   handler: async (ctx, args) => {
     const trimmed = args.name.trim();
     if (!trimmed) throw new Error("Name required");
@@ -20,6 +27,6 @@ export const create = mutation({
     if (existing.some(k => k.name.toLowerCase() === trimmed.toLowerCase())) {
       throw new Error("Kitchen with that name already exists");
     }
-    return await ctx.db.insert("kitchens", { name: trimmed });
+    return await ctx.db.insert("kitchens", { name: trimmed, brandSlug: args.brandSlug });
   },
 });

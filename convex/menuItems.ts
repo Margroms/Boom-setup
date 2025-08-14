@@ -19,6 +19,7 @@ export const create = mutation({
     name: v.string(),
     price: v.number(),
     kitchenId: v.id("kitchens"),
+    imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("menuItems", args);
@@ -30,6 +31,7 @@ export const createForAll = mutation({
   args: {
     name: v.string(),
     price: v.number(),
+    imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const kitchens = await ctx.db.query("kitchens").collect();
@@ -41,6 +43,7 @@ export const createForAll = mutation({
       const newId = await ctx.db.insert("menuItems", {
         name: args.name,
         price: args.price,
+        imageUrl: args.imageUrl,
         kitchenId: k._id,
       });
       ids.push(newId); // newId itself is the Id
@@ -54,5 +57,21 @@ export const remove = mutation({
   args: { menuItemId: v.id("menuItems") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.menuItemId);
+  },
+});
+
+export const updatePrice = mutation({
+  args: { menuItemId: v.id("menuItems"), price: v.number() },
+  handler: async (ctx, args) => {
+    // TODO: Add auth/role check when Better Auth integration claims are available
+    await ctx.db.patch(args.menuItemId, { price: args.price });
+  },
+});
+
+export const updateImage = mutation({
+  args: { menuItemId: v.id("menuItems"), imageUrl: v.string() },
+  handler: async (ctx, args) => {
+    // TODO: Add auth/role check when Better Auth integration claims are available
+    await ctx.db.patch(args.menuItemId, { imageUrl: args.imageUrl });
   },
 });
