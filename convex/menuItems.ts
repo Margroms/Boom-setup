@@ -33,14 +33,17 @@ export const createForAll = mutation({
   },
   handler: async (ctx, args) => {
     const kitchens = await ctx.db.query("kitchens").collect();
-    const ids: string[] = [];
+    if (kitchens.length === 0) {
+      return { inserted: 0, ids: [] as any[] };
+    }
+    const ids = [] as any[]; // Id<'menuItems'>[] but keeping generic for runtime
     for (const k of kitchens) {
-      const id = await ctx.db.insert("menuItems", {
+      const newId = await ctx.db.insert("menuItems", {
         name: args.name,
         price: args.price,
         kitchenId: k._id,
       });
-      ids.push(id.id);
+      ids.push(newId); // newId itself is the Id
     }
     return { inserted: ids.length, ids };
   },

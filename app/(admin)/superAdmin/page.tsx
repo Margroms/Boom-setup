@@ -47,14 +47,33 @@ function KitchenMenu({ kitchen }: { kitchen: KitchenDoc }) {
 
 export default function SuperAdminPage() {
   const kitchens = useQuery(api.kitchen.list);
+  const createKitchen = useMutation(api.kitchen.create);
   const createMenuItem = useMutation(api.menuItems.create);
   const createMenuItemAll = useMutation(api.menuItems.createForAll);
 
+  const [newKitchenName, setNewKitchenName] = useState('');
   const [newItemName, setNewItemName] = useState('');
   const [newItemPrice, setNewItemPrice] = useState('');
   const [selectedKitchen, setSelectedKitchen] = useState<Id<'kitchens'> | ''>('');
   const [submitting, setSubmitting] = useState(false);
+  const [creatingKitchen, setCreatingKitchen] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleCreateKitchen = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newKitchenName.trim()) {
+      setToast({ type: 'error', message: 'Provide a kitchen name.' });
+      return;
+    }
+    setCreatingKitchen(true);
+    try {
+      await createKitchen({ name: newKitchenName.trim() });
+      setNewKitchenName('');
+      setToast({ type: 'success', message: 'Kitchen created!' });
+    } catch (e: any) {
+      setToast({ type: 'error', message: e?.message || 'Failed to create kitchen' });
+    } finally { setCreatingKitchen(false); }
+  };
 
   const handleAddMenuItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,6 +103,7 @@ export default function SuperAdminPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 flex flex-col">
+      {/* Kitchen creation */}
       <header className="sticky top-0 z-20 bg-white/80 backdrop-blur border-b">
         <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
           <h1 className="text-xl font-semibold tracking-tight">Super Admin</h1>
@@ -92,6 +112,25 @@ export default function SuperAdminPage() {
       </header>
 
       <main className="max-w-7xl mx-auto w-full px-4 py-6 space-y-10">
+        {/* Kitchen creation */}
+        <section className="rounded-lg border bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-medium text-neutral-700 mb-4">Add New Kitchen</h2>
+          <form onSubmit={handleCreateKitchen} className="flex flex-col gap-3 sm:flex-row">
+            <input
+              placeholder="Kitchen name"
+              value={newKitchenName}
+              onChange={(e) => setNewKitchenName(e.target.value)}
+              className="flex-1 rounded-md border border-neutral-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-400"
+            />
+            <button
+              type="submit"
+              disabled={creatingKitchen}
+              className={clsx('rounded-md px-4 py-2 text-sm font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-neutral-400 disabled:opacity-50', creatingKitchen ? 'bg-neutral-400' : 'bg-neutral-900 hover:bg-neutral-800')}
+            >{creatingKitchen ? 'Creating…' : 'Create Kitchen'}</button>
+          </form>
+          <p className="mt-3 text-[11px] text-neutral-400">Kitchen names must be unique.</p>
+        </section>
+
         {/* Form */}
         <section className="rounded-lg border bg-white p-5 shadow-sm">
           <h2 className="text-sm font-medium text-neutral-700 mb-4">Add New Menu Item</h2>
